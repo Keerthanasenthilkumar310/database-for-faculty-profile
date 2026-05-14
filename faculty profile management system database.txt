@@ -1,0 +1,252 @@
+-- ============================================
+-- FACULTY PROFILE MANAGEMENT SYSTEM DATABASE
+-- ============================================
+
+-- Drop existing database if exists
+DROP DATABASE IF EXISTS faculty_profile_db;
+
+-- Create new database
+CREATE DATABASE faculty_profile_db;
+
+-- Use the database
+USE faculty_profile_db;
+
+-- ============================================
+-- 1. DEPARTMENT TABLE
+-- ============================================
+CREATE TABLE Department (
+    department_id INT AUTO_INCREMENT PRIMARY KEY,
+    department_name VARCHAR(100) NOT NULL UNIQUE,
+    hod_name VARCHAR(100),
+    office_location VARCHAR(100)
+);
+
+-- ============================================
+-- 2. FACULTY TABLE
+-- ============================================
+CREATE TABLE Faculty (
+    faculty_id INT AUTO_INCREMENT PRIMARY KEY,
+    faculty_name VARCHAR(100) NOT NULL,
+    gender ENUM('Male','Female','Other'),
+    email VARCHAR(100) UNIQUE,
+    phone VARCHAR(15),
+    designation VARCHAR(50),
+    joining_date DATE,
+    department_id INT,
+    FOREIGN KEY (department_id)
+        REFERENCES Department(department_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+-- ============================================
+-- 3. QUALIFICATION TABLE
+-- ============================================
+CREATE TABLE Qualification (
+    qualification_id INT AUTO_INCREMENT PRIMARY KEY,
+    faculty_id INT,
+    degree VARCHAR(50),
+    specialization VARCHAR(100),
+    university VARCHAR(100),
+    year_completed YEAR,
+    FOREIGN KEY (faculty_id)
+        REFERENCES Faculty(faculty_id)
+        ON DELETE CASCADE
+);
+
+-- ============================================
+-- 4. PUBLICATIONS TABLE
+-- ============================================
+CREATE TABLE Publications (
+    publication_id INT AUTO_INCREMENT PRIMARY KEY,
+    faculty_id INT,
+    title VARCHAR(255),
+    journal_name VARCHAR(150),
+    publication_year YEAR,
+    doi VARCHAR(100),
+    FOREIGN KEY (faculty_id)
+        REFERENCES Faculty(faculty_id)
+        ON DELETE CASCADE
+);
+
+-- ============================================
+-- INSERT SAMPLE DATA
+-- ============================================
+
+-- Departments
+INSERT INTO Department (department_name, hod_name, office_location)
+VALUES
+('Computer Science', 'Dr. Rajesh Kumar', 'Block A'),
+('Information Technology', 'Dr. Priya Sharma', 'Block B'),
+('Electronics and Communication', 'Dr. Arjun Singh', 'Block C'),
+('Mechanical Engineering', 'Dr. Meena Devi', 'Block D');
+
+-- Faculty Members
+INSERT INTO Faculty
+(faculty_name, gender, email, phone, designation, joining_date, department_id)
+VALUES
+('S. Keerthana', 'Female', 'keerthana@college.edu', '9876543210',
+ 'Assistant Professor', '2023-06-01', 1),
+
+('A. Pavithra', 'Female', 'pavithra@college.edu', '9876543211',
+ 'Associate Professor', '2021-01-15', 2),
+
+('M. Naseem', 'Male', 'naseem@college.edu', '9876543212',
+ 'Professor', '2018-03-10', 1),
+
+('R. Kumar', 'Male', 'rkumar@college.edu', '9876543213',
+ 'Assistant Professor', '2022-07-20', 3);
+
+-- Qualifications
+INSERT INTO Qualification
+(faculty_id, degree, specialization, university, year_completed)
+VALUES
+(1, 'M.Tech', 'Computer Science', 'Anna University', 2022),
+(1, 'B.E', 'Computer Science', 'Anna University', 2020),
+
+(2, 'PhD', 'Data Science', 'IIT Madras', 2021),
+(2, 'M.Tech', 'Information Technology', 'Anna University', 2017),
+
+(3, 'PhD', 'Artificial Intelligence', 'NIT Trichy', 2018),
+
+(4, 'M.E', 'Embedded Systems', 'Anna University', 2021);
+
+-- Publications
+INSERT INTO Publications
+(faculty_id, title, journal_name, publication_year, doi)
+VALUES
+(1,
+ 'Machine Learning for Fake News Detection',
+ 'International Journal of AI',
+ 2025,
+ '10.1000/ml001'),
+
+(2,
+ 'Big Data Analytics in Education',
+ 'IEEE Transactions',
+ 2024,
+ '10.1000/bd002'),
+
+(3,
+ 'Deep Learning Applications',
+ 'Springer Journal',
+ 2023,
+ '10.1000/dl003'),
+
+(4,
+ 'IoT in Smart Devices',
+ 'Elsevier Electronics',
+ 2024,
+ '10.1000/iot004');
+
+-- ============================================
+-- USEFUL QUERIES
+-- ============================================
+
+-- 1. View all departments
+SELECT * FROM Department;
+
+-- 2. View all faculty
+SELECT * FROM Faculty;
+
+-- 3. Faculty with department names
+SELECT
+    f.faculty_id,
+    f.faculty_name,
+    f.designation,
+    d.department_name
+FROM Faculty f
+JOIN Department d
+ON f.department_id = d.department_id;
+
+-- 4. Search faculty by name
+SELECT *
+FROM Faculty
+WHERE faculty_name LIKE '%Keerthana%';
+
+-- 5. View qualifications of faculty
+SELECT
+    f.faculty_name,
+    q.degree,
+    q.specialization,
+    q.university
+FROM Faculty f
+JOIN Qualification q
+ON f.faculty_id = q.faculty_id;
+
+-- 6. View publications
+SELECT
+    f.faculty_name,
+    p.title,
+    p.journal_name,
+    p.publication_year
+FROM Faculty f
+JOIN Publications p
+ON f.faculty_id = p.faculty_id;
+
+-- ============================================
+-- CREATE VIEW
+-- ============================================
+CREATE VIEW faculty_complete_profile AS
+SELECT
+    f.faculty_id,
+    f.faculty_name,
+    f.designation,
+    f.email,
+    d.department_name
+FROM Faculty f
+JOIN Department d
+ON f.department_id = d.department_id;
+
+-- Use view
+SELECT * FROM faculty_complete_profile;
+
+-- ============================================
+-- STORED PROCEDURE
+-- ============================================
+DELIMITER //
+
+CREATE PROCEDURE GetFacultyByDepartment(IN dept_name VARCHAR(100))
+BEGIN
+    SELECT
+        f.faculty_name,
+        f.designation,
+        d.department_name
+    FROM Faculty f
+    JOIN Department d
+    ON f.department_id = d.department_id
+    WHERE d.department_name = dept_name;
+END //
+
+DELIMITER ;
+
+-- Call procedure
+CALL GetFacultyByDepartment('Computer Science');
+
+-- ============================================
+-- TRIGGER
+-- Automatically uppercase faculty names
+-- ============================================
+DELIMITER //
+
+CREATE TRIGGER before_faculty_insert
+BEFORE INSERT ON Faculty
+FOR EACH ROW
+BEGIN
+    SET NEW.faculty_name = UPPER(NEW.faculty_name);
+END//
+
+DELIMITER ;
+
+-- Test trigger
+INSERT INTO Faculty
+(faculty_name, gender, email, phone, designation, joining_date, department_id)
+VALUES
+('test faculty', 'Male', 'test@college.edu',
+ '9999999999', 'Lecturer', '2025-01-01', 1);
+
+SELECT * FROM Faculty;
+
+-- ============================================
+-- END OF PROJECT
+-- ============================================
